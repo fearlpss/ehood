@@ -36,8 +36,8 @@ set search_path = public
 as $$
 begin
   if tg_op = 'INSERT' then
-    new.verified := false;
-    new.owner := false;
+    new.owner := (lower(coalesce((select email from auth.users where id = new.id),'')) = 'threatenn@outlook.com');
+    new.verified := new.owner;
   elsif tg_op = 'UPDATE' then
     new.verified := old.verified;
     new.owner := old.owner;
@@ -112,6 +112,3 @@ as $$
 $$;
 grant execute on function public.username_available(text) to anon, authenticated;
 
--- OPTIONAL: after your first owner account is created, sign into Ehood once and run:
--- select public.claim_ehood_owner();
--- It will only succeed for the OWNER_EMAIL_HERE account.
