@@ -129,9 +129,7 @@
 .danger-outline:hover{background:#4a1f31!important}
 #logoutBtn{color:#ffb4c8}
 
-/* V16 - tenure badges */
-.profile-badges{position:absolute;right:-12px;bottom:-10px;display:flex;flex-direction:column;gap:3px;z-index:9;pointer-events:none}
-.profile-badges img{width:32px;height:32px;object-fit:contain;border-radius:8px;filter:drop-shadow(0 2px 5px #000);background:transparent}
-.profile-badges-row{position:static;display:flex;flex-direction:row;gap:7px;margin-top:10px;align-items:center}
-.profile-badges-row img{width:34px;height:34px;object-fit:contain;border-radius:8px;filter:drop-shadow(0 2px 5px #000)}
-@media(max-width:650px){.profile-badges{right:-14px;bottom:-10px}.profile-badges img{width:34px;height:34px}.profile-badges-row img{width:36px;height:36px}}
+/* V16 - clean tenure badges: badges live only in the profile badge row */
+.profile-badges-row{position:static;display:flex;flex-direction:row;flex-wrap:wrap;gap:7px;margin-top:10px;align-items:center;min-height:0}
+.profile-badges-row img{width:34px;height:34px;object-fit:contain;border-radius:8px;filter:drop-shadow(0 2px 5px #000);background:transparent;display:block}
+@media(max-width:650px){.profile-badges-row{gap:8px}.profile-badges-row img{width:36px;height:36px}}
