@@ -1,22 +1,35 @@
-EHOOD V10 — SAME-PROJECT DEPLOYMENT
+EHOOD V18 — SAVED ACCOUNTS / REAL LOGIN
 
-Upload the files in this ZIP to the SAME Vercel project. This ZIP has the site files at the top level so you do not need to create a new project/site.
+This version is prepared for persistent Ehood accounts using Supabase Auth + the Supabase profiles database.
 
-NEW IN V8
-- Ehood Owner panel available only to the owner account.
-- Owner can give/remove verification checkmarks.
-- Owner can mute/unmute users.
-- Owner can ban/unban users.
-- Banned users cannot sign in in local mode.
-- Muted users cannot send messages in local mode.
-- First account created in a fresh local browser becomes the Ehood Owner and receives the verification checkmark. Existing local accounts are upgraded so the first existing account becomes owner if no owner exists.
-- Ehood Nitro is shown at $2.99/month with a premium-perks screen.
-- Existing logo, PFP/profile, mobile chat bar, login/logout, username lock, friends/DM UI remain.
+WHAT IT DOES
+- Sign up with email + password.
+- Sign in with the same email + password later.
+- Supabase Auth keeps a secure browser session, so users can close the site and come back without creating another account.
+- Logout clears the active session.
+- Each profile stores its account creation date in profiles.created_at.
+- Member Since reads that saved account creation date.
+- Profile data is stored in the database instead of only in one browser.
 
-IMPORTANT
-This no-service mode stores accounts and moderation data in that browser's localStorage. It is good for a demo on one device, but bans/checkmarks/usernames are NOT global across different devices.
+IMPORTANT — ONE-TIME SUPABASE SETUP
+1. Create a Supabase project.
+2. Open SQL Editor.
+3. Run the entire supabase.sql file from this ZIP.
+4. Open Project Settings → API.
+5. Copy the Project URL and the publishable/anon key into config.js:
+   SUPABASE_URL: "YOUR PROJECT URL"
+   SUPABASE_ANON_KEY: "YOUR PUBLISHABLE/ANON KEY"
+6. In Supabase Authentication settings, configure your site's URL/redirect URL to your Ehood Vercel URL.
+7. Upload the ZIP contents to the SAME GitHub repository and let Vercel redeploy.
 
-For real public use where every user shares the same accounts, username lock, moderation, and Nitro purchase status, Ehood needs a server/database and a real payment provider behind the same Ehood website.
+EMAIL VERIFICATION
+Supabase may require email confirmation depending on your Auth settings. If confirmation is enabled, a new user must confirm their email before a session is created.
 
-NITRO
-The $2.99/month Nitro screen is included, but it does not charge money yet. Payment processing must be connected to a payment provider before accepting real purchases.
+SECURITY
+- Do NOT put a Supabase service-role/secret key in config.js or frontend code.
+- Only use the public publishable/anon key in config.js.
+- The SQL file enables Row Level Security for profiles.
+- Passwords are handled by Supabase Auth and are not stored by the Ehood frontend when Supabase mode is active.
+
+LOCAL FALLBACK
+If config.js still contains placeholders, the site falls back to a local demo mode. That mode only persists accounts on the same browser/device and is NOT the real multi-device account system.

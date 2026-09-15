@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   bio text not null default '',
   avatar text,
   verified boolean not null default false,
+  owner boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -26,7 +27,7 @@ create policy "users insert own profile" on public.profiles for insert with chec
 drop policy if exists "users update own profile" on public.profiles;
 create policy "users update own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
--- Prevent clients from assigning the verified badge themselves.
+-- Prevent clients from assigning owner/verified status themselves.
 create or replace function public.keep_verified_server_controlled()
 returns trigger
 language plpgsql
@@ -36,8 +37,10 @@ as $$
 begin
   if tg_op = 'INSERT' then
     new.verified := false;
+    new.owner := false;
   elsif tg_op = 'UPDATE' then
     new.verified := old.verified;
+    new.owner := old.owner;
   end if;
   return new;
 end;
@@ -55,12 +58,12 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare owner_email text := 'OWNER_EMAIL_HERE';
+declare owner_email text := 'threatenn@outlook.com';
 begin
   if lower(coalesce(auth.jwt()->>'email','')) <> lower(owner_email) then
     return false;
   end if;
-  update public.profiles set verified = true where id = auth.uid();
+  update public.profiles set owner = true, verified = true where id = auth.uid();
   return found;
 end;
 $$;
@@ -75,13 +78,15 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, username, nickname, bio, avatar)
+  insert into public.profiles (id, username, nickname, bio, avatar, owner, verified)
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data->>'username',''), 'user_' || substr(replace(new.id::text,'-',''),1,8)),
     coalesce(new.raw_user_meta_data->>'nickname',''),
     coalesce(new.raw_user_meta_data->>'bio',''),
-    new.raw_user_meta_data->>'avatar'
+    new.raw_user_meta_data->>'avatar',
+    lower(coalesce(new.email,'')) = 'threatenn@outlook.com',
+    lower(coalesce(new.email,'')) = 'threatenn@outlook.com'
   )
   on conflict (id) do nothing;
   return new;
