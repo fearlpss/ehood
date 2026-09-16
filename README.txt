@@ -1,34 +1,12 @@
-EHOOD V20
+EHOOD V29 — NO SUPABASE
 
-Owner:
-threatenn@outlook.com
+This build does NOT use Supabase and does not require Supabase SQL.
 
-OWNER / VERIFIED
-- Only the owner email is marked Owner.
-- The blue verified check is owner-only.
-- New accounts cannot give themselves Owner or Verified.
-- Owner controls no longer include a Verify button for other users.
+- Authentication, profiles, Nitro, badges, owner controls and server customization run in the browser's local storage.
+- The Ehood owner email is threatenn@outlook.com.
+- Only Ehood Nitro or the owner can create servers.
+- Vanity names are normalized and checked against the current local server list immediately before creation.
+- Server icons and banners are stored as optimized image data.
+- Owner Controls can ban/unban users and grant/remove Nitro or Verified badges.
 
-SHARED CHAT
-This version includes /api/chat backed by the Neon/Postgres database connected to the Vercel project.
-The chat polls every 2 seconds so people on different phones/devices can see each other's messages.
-It stores sender username/avatar with each message so chat users can see each other even when profiles are local.
-
-VERCEL
-Make sure the Neon integration is connected to the ehood-v15 project and exposes one of these environment variables:
-POSTGRES_URL, DATABASE_URL, or NEON_DATABASE_URL.
-No Supabase connection is required for the shared chat API.
-
-IMPORTANT
-Do not upload this ZIP as a single file into GitHub. Replace the project source files with the extracted contents, or deploy the folder directly through the appropriate Vercel workflow.
-
-
-CHAT FIX
-1. In Supabase SQL Editor, run the entire supabase.sql file.
-2. Put your real Supabase URL and anon/publishable key in config.js (replace YOUR_SUPABASE_URL and YOUR_SUPABASE_ANON_KEY).
-3. Redeploy to Vercel. The chat now writes/reads from Supabase and uses Realtime; users in the same channel see each other.
-
-Server creation permissions
-- Only Ehood Nitro users or the configured Ehood owner can open/create servers.
-- The create flow no longer relies on a pre-check before the database insert; the database's unique vanity constraint is authoritative, so a vanity shown as available cannot be incorrectly claimed because of a stale client check.
-- Nitro in this build is still a local preview toggle. For production-grade entitlement enforcement, connect Nitro status to a server-side subscription table/payment provider and enforce it with Supabase RLS or an RPC.
+Important: local storage is per browser/device. For truly shared accounts, bans, Nitro, badges and servers across different phones, a server-side database/API is required. This version intentionally does not use Supabase.

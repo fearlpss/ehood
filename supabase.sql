@@ -165,3 +165,140 @@ drop policy if exists "owners update groups" on public.ehood_groups;
 create policy "owners update groups" on public.ehood_groups for update to authenticated using (auth.uid()=owner_id) with check (auth.uid()=owner_id);
 drop policy if exists "owners delete groups" on public.ehood_groups;
 create policy "owners delete groups" on public.ehood_groups for delete to authenticated using (auth.uid()=owner_id);
+
+-- Ehood V28 permissions + persistent Nitro/verification/moderation + atomic server claims.
+alter table public.profiles add column if not exists nitro boolean not null default false;
+alter table public.profiles add column if not exists muted boolean not null default false;
+alter table public.profiles add column if not exists banned boolean not null default false;
+
+create or replace function public.keep_profile_server_controlled()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare owner_email text := 'threatenn@outlook.com';
+begin
+  if tg_op = 'INSERT' then
+    new.owner := (lower(coalesce((select email from auth.users where id = new.id),'')) = lower(owner_email));
+    new.verified := new.owner;
+    new.nitro := new.owner;
+    new.muted := false;
+    new.banned := false;
+  elsif tg_op = 'UPDATE' then
+    new.owner := old.owner;
+    if not (lower(coalesce((select email from auth.users where id = auth.uid()),'')) = lower(owner_email)) then
+      new.verified := old.verified;
+      new.nitro := old.nitro;
+      new.muted := old.muted;
+      new.banned := old.banned;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_verified_guard on public.profiles;
+drop trigger if exists profiles_control_guard on public.profiles;
+create trigger profiles_control_guard
+before insert or update on public.profiles
+for each row execute function public.keep_profile_server_controlled();
+
+create or replace function public.claim_ehood_owner()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare owner_email text := 'threatenn@outlook.com';
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) <> lower(owner_email) then return false; end if;
+  update public.profiles set owner=true, verified=true, nitro=true where id=auth.uid();
+  return found;
+end;
+$$;
+revoke all on function public.claim_ehood_owner() from public;
+grant execute on function public.claim_ehood_owner() to authenticated;
+
+-- Only the owner can change another user's moderation, Nitro, or verified status.
+create or replace function public.owner_ban_user(target_id uuid)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) <> 'threatenn@outlook.com' then return false; end if;
+  update public.profiles set banned=true where id=target_id and owner=false;
+  return found;
+end; $$;
+create or replace function public.owner_unban_user(target_id uuid)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) <> 'threatenn@outlook.com' then return false; end if;
+  update public.profiles set banned=false where id=target_id;
+  return found;
+end; $$;
+create or replace function public.owner_set_nitro(target_id uuid, enabled boolean)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) <> 'threatenn@outlook.com' then return false; end if;
+  update public.profiles set nitro=enabled where id=target_id and (owner=false or enabled=true);
+  return found;
+end; $$;
+create or replace function public.owner_set_verified(target_id uuid, enabled boolean)
+returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) <> 'threatenn@outlook.com' then return false; end if;
+  update public.profiles set verified=enabled where id=target_id and (owner=false or enabled=true);
+  return found;
+end; $$;
+revoke all on function public.owner_ban_user(uuid) from public;
+revoke all on function public.owner_unban_user(uuid) from public;
+revoke all on function public.owner_set_nitro(uuid,boolean) from public;
+revoke all on function public.owner_set_verified(uuid,boolean) from public;
+grant execute on function public.owner_ban_user(uuid) to authenticated;
+grant execute on function public.owner_unban_user(uuid) to authenticated;
+grant execute on function public.owner_set_nitro(uuid,boolean) to authenticated;
+grant execute on function public.owner_set_verified(uuid,boolean) to authenticated;
+
+-- Server creation must be authorized in the database, not only hidden in the UI.
+drop policy if exists "users create groups" on public.ehood_groups;
+create policy "nitro or owner create groups" on public.ehood_groups
+for insert to authenticated with check (
+  auth.uid()=owner_id and exists (select 1 from public.profiles p where p.id=auth.uid() and (p.owner=true or p.nitro=true) and p.banned=false)
+);
+
+create or replace function public.create_ehood_group(p_name text,p_vanity text,p_icon_url text default null,p_banner_url text default null)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_vanity text := lower(trim(both '/' from trim(p_vanity))); g public.ehood_groups%rowtype;
+begin
+  if not exists(select 1 from public.profiles where id=auth.uid() and (owner=true or nitro=true) and banned=false) then
+    return jsonb_build_object('ok',false,'reason','not_allowed');
+  end if;
+  if not v_vanity ~ '^[a-z0-9-]{2,24}$' then return jsonb_build_object('ok',false,'reason','invalid_vanity'); end if;
+  if exists(select 1 from public.ehood_groups where lower(vanity)=v_vanity) then return jsonb_build_object('ok',false,'reason','vanity_claimed'); end if;
+  begin
+    insert into public.ehood_groups(owner_id,name,vanity,icon_url,banner_url) values(auth.uid(),trim(p_name),v_vanity,p_icon_url,p_banner_url) returning * into g;
+  exception when unique_violation then
+    if exists(select 1 from public.ehood_groups where lower(vanity)=v_vanity) then return jsonb_build_object('ok',false,'reason','vanity_claimed'); end if;
+    raise;
+  end;
+  return jsonb_build_object('ok',true,'group',to_jsonb(g));
+end; $$;
+revoke all on function public.create_ehood_group(text,text,text,text) from public;
+grant execute on function public.create_ehood_group(text,text,text,text) to authenticated;
+
+create or replace function public.update_ehood_group(p_group_id uuid,p_name text,p_vanity text,p_icon_url text default null,p_banner_url text default null)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_vanity text := lower(trim(both '/' from trim(p_vanity))); g public.ehood_groups%rowtype;
+begin
+  if not exists(select 1 from public.ehood_groups where id=p_group_id and owner_id=auth.uid()) then return jsonb_build_object('ok',false,'reason','not_owner'); end if;
+  if not v_vanity ~ '^[a-z0-9-]{2,24}$' then return jsonb_build_object('ok',false,'reason','invalid_vanity'); end if;
+  if exists(select 1 from public.ehood_groups where lower(vanity)=v_vanity and id<>p_group_id) then return jsonb_build_object('ok',false,'reason','vanity_claimed'); end if;
+  begin
+    update public.ehood_groups set name=trim(p_name),vanity=v_vanity,icon_url=p_icon_url,banner_url=p_banner_url where id=p_group_id and owner_id=auth.uid() returning * into g;
+  exception when unique_violation then
+    if exists(select 1 from public.ehood_groups where lower(vanity)=v_vanity and id<>p_group_id) then return jsonb_build_object('ok',false,'reason','vanity_claimed'); end if;
+    raise;
+  end;
+  return jsonb_build_object('ok',true,'group',to_jsonb(g));
+end; $$;
+revoke all on function public.update_ehood_group(uuid,text,text,text,text) from public;
+grant execute on function public.update_ehood_group(uuid,text,text,text,text) to authenticated;
