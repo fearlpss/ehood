@@ -27,3 +27,8 @@ CHAT FIX
 1. In Supabase SQL Editor, run the entire supabase.sql file.
 2. Put your real Supabase URL and anon/publishable key in config.js (replace YOUR_SUPABASE_URL and YOUR_SUPABASE_ANON_KEY).
 3. Redeploy to Vercel. The chat now writes/reads from Supabase and uses Realtime; users in the same channel see each other.
+
+Server creation permissions
+- Only Ehood Nitro users or the configured Ehood owner can open/create servers.
+- The create flow no longer relies on a pre-check before the database insert; the database's unique vanity constraint is authoritative, so a vanity shown as available cannot be incorrectly claimed because of a stale client check.
+- Nitro in this build is still a local preview toggle. For production-grade entitlement enforcement, connect Nitro status to a server-side subscription table/payment provider and enforce it with Supabase RLS or an RPC.
