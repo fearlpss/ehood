@@ -1,0 +1,1 @@
+const modal=document.getElementById('hireModal');const open=document.getElementById('hireBtn');const close=document.getElementById('closeModal');open.onclick=()=>{modal.classList.add('show');modal.setAttribute('aria-hidden','false')};close.onclick=()=>{modal.classList.remove('show');modal.setAttribute('aria-hidden','true')};modal.onclick=e=>{if(e.target===modal)close.onclick()};
