@@ -87,28 +87,60 @@ function chatUser(m){return profiles.find(x=>String(x.id)===String(m.user_id))||
 function mergeChatUsers(arr){for(const m of arr){if(!profiles.some(x=>String(x.id)===String(m.user_id)))profiles.push({id:m.user_id,username:m.username||'User',avatar:m.avatar||null,owner:false,verified:false,created_at:m.created_at})}}
 async function fetchChat(){
  const key=channelKey();
- if(localMode && !ready){return localMessages(key)}
+ if(!ready||!supa) return localMessages(key);
  try{
-  const r=await fetch('/api/chat?channel='+encodeURIComponent(key),{cache:'no-store'});
-  if(!r.ok)throw new Error('chat api');
-  const arr=await r.json();chatMessages[key]=arr;mergeChatUsers(arr);return arr;
- }catch(e){return chatMessages[key]||localMessages(key)}
+  const {data,error}=await supa.from('ehood_messages').select('id,channel_key,user_id,username,avatar,text,image,image_name,created_at,edited').eq('channel_key',key).order('created_at',{ascending:true}).limit(200);
+  if(error) throw error;
+  const arr=data||[]; chatMessages[key]=arr; mergeChatUsers(arr); return arr;
+ }catch(e){ console.error('Chat load failed:',e); return chatMessages[key]||[]; }
+}
+function stopChatRealtime(){ if(window.__ehoodChatChannel&&supa){supa.removeChannel(window.__ehoodChatChannel);window.__ehoodChatChannel=null;} }
+function startChatRealtime(){
+ if(!ready||!supa) return;
+ stopChatRealtime();
+ const key=channelKey();
+ window.__ehoodChatChannel=supa.channel('ehood-chat-'+key.replace(/[^a-zA-Z0-9_-]/g,'_'))
+  .on('postgres_changes',{event:'*',schema:'public',table:'ehood_messages',filter:'channel_key=eq.'+key},()=>{ fetchChat().then(renderMessages); })
+  .subscribe();
 }
 async function loadChat(){
  const arr=await fetchChat();renderMessages(arr);
- if(!chatTimer){chatTimer=setInterval(async()=>{if(!document.hidden&&me&&!dmUser)renderMessages(await fetchChat())},2000)}
+ if(ready&&supa) startChatRealtime();
+ if(!chatTimer){chatTimer=setInterval(async()=>{if(!document.hidden&&me&&!dmUser)renderMessages(await fetchChat())},5000)}
 }
 function renderMessages(arr=chatMessages[channelKey()]||localMessages(channelKey())){$('#messages').innerHTML=arr.map((m,i)=>{const u=chatUser(m);const can=String(m.user_id)===String(me.id)||isOwner();const when=m.created_at||m.time;return `<div class="msg" data-mid="${m.id||''}">${avatarHTML(u)}<div class="msgbody"><div class="meta"><b>${esc(u.username)}</b>${u.owner?'<span class="verified">✓</span>':''}<time>${new Date(when).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}${m.edited?' <span class="edited">(edited)</span>':''}</time></div>${m.text?`<div class="text">${esc(m.text)}</div>`:''}${m.image?`<img class="message-image" src="${m.image}" alt="${esc(m.imageName||'Image')}" onclick="window.open(this.src,'_blank')">`:''}${can?`<div class="msg-actions"><button class="msg-action" onclick="editMessage(${i})">Edit</button><button class="msg-action danger" onclick="deleteMessage(${i})">Delete</button></div>`:''}</div></div>`}).join('');$('#messages').scrollTop=1e9}
-async function editMessage(i){const a=chatMessages[channelKey()]||localMessages(channelKey()),m=a[i];if(!m)return;if(String(m.user_id)!==String(me.id)&&!isOwner())return toast('You can only edit your own messages.');const n=prompt('Edit message:',m.text||'');if(n===null)return;const t=n.trim();if(!t)return toast('Message cannot be empty.');if(m.id){const r=await fetch('/api/chat',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:m.id,user_id:me.id,text:t})});if(!r.ok)return toast('Could not edit message.')}else{m.text=t;m.edited=true;saveUI()}await loadChat()}
-function deleteGroup(id){const g=groupById(id);if(!g)return;if(g.owner_id!==me.id&&!isOwner())return toast('Only the group owner or Ehood owner can delete this group.');if(!confirm(`Delete ${g.name}?`))return;ui.groups=ui.groups.filter(x=>x.id!==id);Object.keys(ui.messages).forEach(k=>{if(k.startsWith(id+':'))delete ui.messages[k]});activeGroupId='ehood';current='general';saveUI();render();toast('Group deleted.')}
-window.deleteGroup=deleteGroup;
-function deleteMessage(i){const g=groupById(id);if(!g)return;if(g.owner_id!==me.id&&!isOwner())return toast('Only the group owner or Ehood owner can delete this group.');if(!confirm(`Delete ${g.name}?`))return;ui.groups=ui.groups.filter(x=>x.id!==id);Object.keys(ui.messages).forEach(k=>{if(k.startsWith(id+':'))delete ui.messages[k]});activeGroupId='ehood';current='general';saveUI();render();toast('Group deleted.')}
-window.deleteGroup=deleteGroup;
-async function deleteMessage(i){const a=chatMessages[channelKey()]||localMessages(channelKey()),m=a[i];if(!m)return;if(String(m.user_id)!==String(me.id)&&!isOwner())return toast('You can only delete your own messages.');if(!confirm('Delete this message?'))return;if(m.id){const r=await fetch('/api/chat',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:m.id,user_id:me.id})});if(!r.ok)return toast('Could not delete message.')}else{a.splice(i,1);saveUI()}await loadChat()}
+async function editMessage(i){
+ const a=chatMessages[channelKey()]||localMessages(channelKey()),m=a[i]; if(!m)return;
+ if(String(m.user_id)!==String(me.id)&&!isOwner())return toast('You can only edit your own messages.');
+ const n=prompt('Edit message:',m.text||''); if(n===null)return; const t=n.trim(); if(!t)return toast('Message cannot be empty.');
+ if(ready&&supa&&m.id){ const {error}=await supa.from('ehood_messages').update({text:t,edited:true}).eq('id',m.id).eq('user_id',String(me.id)); if(error)return toast('Could not edit message.'); }
+ else {m.text=t;m.edited=true;saveUI();}
+ await loadChat();
+}
+async function deleteMessage(i){
+ const a=chatMessages[channelKey()]||localMessages(channelKey()),m=a[i]; if(!m)return;
+ if(String(m.user_id)!==String(me.id)&&!isOwner())return toast('You can only delete your own messages.');
+ if(!confirm('Delete this message?'))return;
+ if(ready&&supa&&m.id){ const {error}=await supa.from('ehood_messages').delete().eq('id',m.id).eq('user_id',String(me.id)); if(error)return toast('Could not delete message.'); }
+ else {a.splice(i,1);saveUI();}
+ await loadChat();
+}
 window.editMessage=editMessage;window.deleteMessage=deleteMessage;
 function dm(id){const u=profiles.find(x=>x.id===id);if(!u)return;dmUser=u;select('dm')}
 window.dm=dm;
-async function sendMessage(){if(me?.banned)return toast('You are banned from Ehood.');if(me?.muted)return toast('You are muted.');const t=$('#messageInput').value.trim();const f=$('#imageInput')?.files?.[0];if(!t&&!f)return;let image=null,imageName=null;if(f){if(!f.type.startsWith('image/'))return toast('Please choose an image.');image=await readFile(f);imageName=f.name}const key=channelKey();const payload={channel_key:key,user_id:String(me.id),username:me.username||'User',avatar:me.avatar||null,text:t,image,image_name:imageName};if(ready){/* Supabase can be used when configured, but Vercel chat API is the default. */}try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw new Error('send');const m=await r.json();chatMessages[key]=[...(chatMessages[key]||[]),m].slice(-200);mergeChatUsers([m]);}catch(e){toast(e.message||'Could not send message. Make sure the shared chat database is connected in Vercel.');return}$('#messageInput').value='';if($('#imageInput'))$('#imageInput').value='';renderMessages();}
+async function sendMessage(){
+ if(me?.banned)return toast('You are banned from Ehood.'); if(me?.muted)return toast('You are muted.');
+ const input=$('#messageInput'),t=input.value.trim(),f=$('#imageInput')?.files?.[0]; if(!t&&!f)return;
+ let image=null,imageName=null; if(f){if(!f.type.startsWith('image/'))return toast('Please choose an image.'); image=await readFile(f);imageName=f.name;}
+ const key=channelKey(),payload={channel_key:key,user_id:String(me.id),username:me.username||'User',avatar:me.avatar||null,text:t,image,image_name:imageName};
+ try{
+  if(ready&&supa){
+   const {data,error}=await supa.from('ehood_messages').insert(payload).select('id,channel_key,user_id,username,avatar,text,image,image_name,created_at,edited').single();
+   if(error)throw error; chatMessages[key]=[...(chatMessages[key]||[]),data].slice(-200); mergeChatUsers([data]);
+  } else { localMessages(key).push({...payload,time:Date.now()}); saveUI(); }
+  input.value=''; if($('#imageInput'))$('#imageInput').value=''; renderMessages();
+ }catch(e){ console.error('Chat send failed:',e); toast('Chat is not connected yet.'); }
+}
 $('#composer').onsubmit=e=>{e.preventDefault();sendMessage()};
 async function renderMembers(){await refreshProfiles();$('#memberList').innerHTML=profiles.map(u=>`<div class="member" onclick="profileModal('${u.id}')">${avatarHTML(u)}<span><b>@${esc(u.username)} ${u.owner?'<span class="verified">✓</span>':''}</b><small>${u.id===me.id?'● Online':'● Online · Click to view'}</small></span></div>`).join('')}
 function nitroInfo(){const active=!!ui.nitro[me.id];modal(`<div class="nitro-page"><div class="nitro-icon">✨</div><h2>Ehood Nitro</h2><p class="muted">Premium customization for your Ehood profile.</p><div class="nitro-price">$2.99 <span>/ month</span></div><div class="nitro-status ${active?'on':''}">${active?'✓ Nitro is active':'Not subscribed'}</div><ul class="perk-list"><li>✨ Nitro badge on your profile</li><li>🎨 Premium profile styling</li><li>💜 Extra profile customization</li><li>🚀 Future Nitro perks</li></ul><button class="primary wide" onclick="toggleNitro()">${active?'Manage Nitro':'Get Ehood Nitro'}</button><div class="disabled-note">Payments are not connected yet, so this is a preview-only subscription.</div></div>`)}
