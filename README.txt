@@ -1,4 +1,4 @@
-EHOOD V20
+EHOOD V22 CHAT FIX
 
 Owner:
 threatenn@outlook.com
@@ -11,12 +11,12 @@ OWNER / VERIFIED
 
 SHARED CHAT
 This version includes /api/chat backed by the Neon/Postgres database connected to the Vercel project.
-The chat polls every 2 seconds so people on different phones/devices can see each other's messages.
+The chat polls every 2 seconds so people on different phones/devices can see each other's messages. The browser no longer silently falls back to private local-only chat when the shared database is missing; it shows the actual configuration error instead.
 It stores sender username/avatar with each message so chat users can see each other even when profiles are local.
 
 VERCEL
 Make sure the Neon integration is connected to the ehood-v15 project and exposes one of these environment variables:
-POSTGRES_URL, DATABASE_URL, or NEON_DATABASE_URL.
+POSTGRES_URL, DATABASE_URL, NEON_DATABASE_URL, or POSTGRES_URL_NON_POOLING.
 No Supabase connection is required for the shared chat API.
 
 IMPORTANT
