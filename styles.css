@@ -137,3 +137,12 @@
 .access-gate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at top,#2b0b4d,#09070d 55%)}.access-gate.hidden{display:none}.access-card{width:min(420px,100%);background:#120d18;border:1px solid #3b1858;border-radius:18px;padding:32px;box-shadow:0 25px 80px #000}.access-logo{display:block;width:150px;height:150px;object-fit:contain;margin:0 auto 4px;border-radius:24px}.access-card h1{text-align:center;margin:12px 0 2px}.access-card>p{text-align:center;color:#9d93a8;margin-bottom:22px}.access-card .error{text-align:center}
 
 .hire-panel .muted{color:#9d93a8}.hire-options{display:grid;gap:9px;margin-top:18px}.hire-options .secondary{width:100%;text-align:left;border:1px solid #392743}.hire-panel .actions{margin-top:18px}
+/* V24 - Discord-style custom Ehood servers */
+.group-server{overflow:hidden;position:relative}
+.group-server img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.vanity-input{display:flex;align-items:center;gap:7px;background:#0d0912;border:1px solid #392743;border-radius:10px;padding:0 11px;color:#8f8499;font-weight:800}
+.vanity-input input{border:0!important;background:transparent!important;padding-left:0!important;min-width:0}
+.group-banner-editor{height:130px;border-radius:14px;border:1px solid #3a2450;background:linear-gradient(135deg,#261334,#5c267d);background-size:cover;background-position:center;margin:8px 0 16px}
+.group-banner-editor.has-custom{box-shadow:inset 0 0 0 1px #ffffff18}
+#chatTitle{display:inline-block}
+.server-name-chip{font-weight:900}

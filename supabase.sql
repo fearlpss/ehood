@@ -144,3 +144,24 @@ do $$ begin
   alter publication supabase_realtime add table public.ehood_messages;
 exception when duplicate_object then null;
 end $$;
+
+-- Discord-style Ehood servers/groups
+create table if not exists public.ehood_groups (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  vanity text not null unique,
+  icon_url text,
+  banner_url text,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists ehood_groups_vanity_lower_idx on public.ehood_groups(lower(vanity));
+alter table public.ehood_groups enable row level security;
+drop policy if exists "groups are public" on public.ehood_groups;
+create policy "groups are public" on public.ehood_groups for select using (true);
+drop policy if exists "users create groups" on public.ehood_groups;
+create policy "users create groups" on public.ehood_groups for insert to authenticated with check (auth.uid()=owner_id);
+drop policy if exists "owners update groups" on public.ehood_groups;
+create policy "owners update groups" on public.ehood_groups for update to authenticated using (auth.uid()=owner_id) with check (auth.uid()=owner_id);
+drop policy if exists "owners delete groups" on public.ehood_groups;
+create policy "owners delete groups" on public.ehood_groups for delete to authenticated using (auth.uid()=owner_id);
