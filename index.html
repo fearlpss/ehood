@@ -1,60 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ehood — General</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <aside class="sidebar">
-    <div class="server">E</div>
-    <button class="add">+</button>
-    <button class="hire-btn" id="hireBtn" aria-label="Hire a guy">🤝</button>
-  </aside>
-
-  <main class="app">
-    <header class="header">
-      <div class="avatar">E</div>
-      <div>
-        <h1># general</h1>
-        <p>Ehood · Welcome to Ehood.</p>
-      </div>
-      <div class="header-actions">⌕ &nbsp; 👥</div>
-    </header>
-
-    <section class="messages">
-      <article class="message">
-        <div class="msg-avatar">E</div>
-        <div>
-          <div class="meta"><strong>xo</strong><span class="verified">✓</span><time>Sep 15 at 3:44 PM</time></div>
-          <div class="bubble">Hey</div>
-        </div>
-      </article>
-    </section>
-
-    <div class="composer">
-      <span class="plus">+</span>
-      <input placeholder="Message #general" />
-      <button>➤</button>
-    </div>
-  </main>
-
-  <div class="modal" id="hireModal" aria-hidden="true">
-    <div class="modal-card">
-      <button class="close" id="closeModal">×</button>
-      <div class="person">👤</div>
-      <h2>Hire a guy</h2>
-      <p>Choose a service and send a request.</p>
-      <div class="service-list">
-        <button>General help</button>
-        <button>Errand / pickup</button>
-        <button>Other</button>
-      </div>
-      <p class="small">Requests should only be used for lawful services.</p>
-    </div>
-  </div>
-
-  <script src="script.js"></script>
-</body>
-</html>
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ehood</title><link rel="stylesheet" href="styles.css"></head><body>
+<div id="accessGate" class="access-gate"><div class="access-card"><img class="access-logo" src="ehood-logo.png" alt="Ehood logo"><h1>Enter Ehood</h1><p>Enter the access code to continue.</p><form id="accessForm"><div class="field"><label>ACCESS CODE</label><input id="accessCode" type="password" autocomplete="off" placeholder="Enter code" required></div><button class="primary wide" type="submit">Enter Site</button><div id="accessError" class="error"></div></form></div></div>
+<div id="authView" class="auth-screen"><div class="auth-card"><img class="auth-logo" src="ehood-logo.png" alt="Ehood logo"><h1>Ehood</h1><p>Your people. Your hood.</p><div class="tabs"><button class="tab active" data-mode="signin">Sign in</button><button class="tab" data-mode="signup">Sign up</button></div><form id="authForm"><div id="usernameWrap" class="field hidden"><label>Username</label><input id="authUsername" maxlength="24" placeholder="@username"></div><div class="field"><label>Email</label><input id="authEmail" type="email" required></div><div class="field"><label>Password</label><input id="authPassword" type="password" minlength="6" required></div><div id="authPfpWrap" class="field hidden"><label>Profile picture</label><input id="authPfp" type="file" accept="image/*"></div><button class="primary wide" id="authSubmit">Sign in</button><div id="authError" class="error"></div></form></div></div>
+<div id="mainView" class="hidden">
+<aside class="serverbar"><button class="server active">E</button><div id="servers"></div><button class="server add" id="addCommunity">+</button><button class="server hire-server" id="hireBtn" aria-label="Hire a guy" title="Hire a guy">🤝</button></aside>
+<aside class="sidebar"><div class="sidehead"><b>Ehood</b><button id="communitySettings">⌄</button></div><div class="sidecontent"><div class="side-tools"><button class="side-tool" id="nitroBtn">✨ Ehood Nitro · $2.99/mo</button></div><div class="cat">CHATS</div><div id="channels"></div><button class="channel" id="addChat">＋ New chat</button><div class="cat">VOICE</div><button class="channel">🔊 General</button></div>
+<div class="userbar"><button id="profileBtn" class="userclick"><span id="selfAvatarWrap" class="avatar-shell"><img id="selfAvatar" class="avatar"></span><span><b id="selfName"></b><small>● Online</small></span></button><button id="settingsBtn" class="iconbtn">⚙</button><button id="logoutBtn" class="iconbtn">Logout</button></div></aside>
+<main class="chat"><header><div class="chatheadleft"><button class="mobileProfile" id="mobileProfileBtn" aria-label="Open my profile"><span id="mobileSelfAvatarWrap" class="avatar-shell"><img id="mobileSelfAvatar" class="avatar" alt="My profile"></span></button><div><div class="title"># <b id="chatTitle">general</b></div><small id="topic">Welcome to Ehood.</small></div></div><div><button class="iconbtn" id="searchBtn">⌕</button><button class="iconbtn" id="membersBtn">👥</button></div></header><section id="messages"></section><form id="composer"><button type="button" id="plus" aria-label="Attach image">＋</button><input id="imageInput" class="hidden-file" type="file" accept="image/*"><input id="messageInput" placeholder="Message #general"><button class="send">➤</button></form></main>
+<aside class="members"><b class="cat">ONLINE — MEMBERS</b><div id="memberList"></div></aside></div><div id="modalRoot"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script></body></html>
